@@ -1,60 +1,91 @@
-# Template: Python - Minimal
+# Robot for ordering
 
-This template leverages the new [Python framework](https://github.com/robocorp/robocorp), the [libraries](https://github.com/robocorp/robocorp/blob/master/docs/README.md#python-libraries) from to same project as well.
 
-The template provides you with the basic structure of a Python project: logging out of the box and controlling your tasks without fiddling with the base Python stuff. The environment contains the most used libraries, so you do not have to start thinking about those right away. 
 
-👉 Other templates are available as well via our tooling and on our [Portal](https://robocorp.com/portal/tag/template)
 
-## Running
 
-#### VS Code
-1. Get [Robocorp Code](https://robocorp.com/docs/developer-tools/visual-studio-code/extension-features) -extension for VS Code.
-1. You'll get an easy-to-use side panel and powerful command-palette commands for running, debugging, code completion, docs, etc.
+## Setup as a Background Service
 
-#### Command line
+### 🚀 Setup and test Workforce Agent Core
+Replace <link token> below with a link token created from the Control Room Workers -page. Note that Workforce Agent is always linked to a specific workspace in Control Room to avoid accidental runs between development and production Workers.
 
-1. [Get RCC](https://github.com/robocorp/rcc?tab=readme-ov-file#getting-started)
-1. Use the command: `rcc run`
 
-## Results
 
-🚀 After running the bot, check out the `log.html` under the `output` -folder.
+```
+mkdir ~/.robocorp
+curl https://downloads.robocorp.com/workforce-agent-core/releases/latest/linux64/robocorp-workforce-agent-core -o ~/.robocorp/robocorp-workforce-agent-core
+chmod +x ~/.robocorp/robocorp-workforce-agent-core
+~/.robocorp/robocorp-workforce-agent-core -v
+~/.robocorp/robocorp-workforce-agent-core link <link token>
+~/.robocorp/robocorp-workforce-agent-core start --service
+```
 
-## Dependencies
 
-We strongly recommend getting familiar with adding your dependencies in [conda.yaml](conda.yaml) to control your Python dependencies and the whole Python environment for your automation.
+## Setup service
 
-<details>
-  <summary>🙋‍♂️ "Why not just pip install...?"</summary>
+1. Create the service config file
 
-Think of [conda.yaml](conda.yaml) as an equivalent of the requirements.txt, but much better. 👩‍💻 With `conda.yaml`, you are not just controlling your PyPI dependencies; you control the complete Python environment, which makes things repeatable and easy.
 
-👉 You will probably need to run your code on another machine quite soon, so by using `conda.yaml`:
-- You can avoid `Works on my machine` -cases
-- You do not need to manage Python installations on all the machines
-- You can control exactly which version of Python your automation will run on 
-  - You'll also control the pip version to avoid dep. resolution changes
-- No need for venv, pyenv, ... tooling and knowledge sharing inside your team.
-- Define dependencies in conda.yaml, let our tooling do the heavy lifting.
-- You get all the content of [conda-forge](https://prefix.dev/channels/conda-forge) without any extra tooling
+```
+touch /etc/systemd/system/RobocorpAgentCore.service
+sudo chmod 664 /etc/systemd/system/RobocorpAgentCore.service
+```
 
-> Dive deeper with [these](https://github.com/robocorp/rcc/blob/master/docs/recipes.md#what-is-in-condayaml) resources.
 
-</details>
-<br/>
+2.  Add the following content to the config file
 
-> The full power of [rpaframework](https://robocorp.com/docs/python/rpa-framework) -libraries is also available on Python as a backup while we implement the new Python libraries.
+Edit the file /etc/systemd/system/RobocorpAgentCore.service with your favorite text editor.
 
-## What now?
+```
+[Unit]
+Description=Robocorp Agent
 
-🚀 Now, go get'em
+[Service]
+User=<user>
+ExecStart=/home/centos/.robocorp/robocorp-workforce-agent-core start --service
+Restart=always
+PrivateDevices=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectSystem=full
+RestrictSUIDSGID=true
+PrivateTmp=yes
 
-Start writing Python and remember that the AI/LLM's out there are getting really good and creating Python code specifically.
+[Install]
+WantedBy=default.target
+```
+- Replace <user> with actual user
+- The ExecStart needs to have the absolute path
 
-👉 Try out [Robocorp ReMark 💬](https://chat.robocorp.com)
+3. Setup and start the service:
+```
+sudo systemctl daemon-reload
+sudo systemctl start RobocorpAgentCore.service
+sudo systemctl status RobocorpAgentCore.service
+```
+### Having the service start at boot
 
-For more information, do not forget to check out the following:
-- [Robocorp Documentation -site](https://robocorp.com/docs)
-- [Portal for more examples](https://robocorp.com/portal)
-- Follow our main [robocorp -repository](https://github.com/robocorp/robocorp) as it is the main location where we developed the libraries and the framework.
+If you want the service to be running after startup you have to run:
+
+```
+sudo systemctl enable RobocorpAgentCore.service
+```
+
+
+### Maintain the service
+The typical maintenance task is to update the Agent Core executable.
+
+For that, you need to:
+
+- Stop the service
+- Download the latest Agent Core
+- Restart the service
+
+
+```
+sudo systemctl stop RobocorpAgentCore.service
+curl https://downloads.robocorp.com/workforce-agent-core/releases/latest/linux64/robocorp-workforce-agent-core -o ~/.robocorp/robocorp-workforce-agent-core
+sudo systemctl start RobocorpAgentCore.service
+sudo systemctl status RobocorpAgentCore.service
+```
+
